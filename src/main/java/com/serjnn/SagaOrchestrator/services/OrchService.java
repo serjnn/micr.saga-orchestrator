@@ -1,73 +1,63 @@
 package com.serjnn.SagaOrchestrator.services;
 
-
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
-import com.serjnn.SagaOrchestrator.enums.SagaStepStatus;
 import com.serjnn.SagaOrchestrator.steps.BucketStep;
 import com.serjnn.SagaOrchestrator.steps.ClientBalanceStep;
 import com.serjnn.SagaOrchestrator.steps.OrderStep;
 import com.serjnn.SagaOrchestrator.steps.SagaStep;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.SignalType;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class OrchService {
 
+    private static final Logger log = LoggerFactory.getLogger(OrchService.class);
 
     private final ClientBalanceStep clientBalanceStep;
     private final BucketStep bucketStep;
     private final OrderStep orderStep;
 
+    public OrchService(ClientBalanceStep clientBalanceStep, BucketStep bucketStep, OrderStep orderStep) {
+        this.clientBalanceStep = clientBalanceStep;
+        this.bucketStep = bucketStep;
+        this.orderStep = orderStep;
+    }
+
     private List<SagaStep> getSteps() {
         return List.of(clientBalanceStep, bucketStep, orderStep);
     }
 
-
-    public Mono<Boolean> start(OrderDTO orderDTO) {
+    public boolean start(OrderDTO orderDTO) {
         log.info("starting transaction");
+        List<SagaStep> completedSteps = new ArrayList<>();
 
-        return Flux.fromIterable(getSteps())
-                .concatMap(step -> step.process(orderDTO)
-                        .flatMap(success -> {
-                            if (success) {
-                                step.setStatus(SagaStepStatus.COMPLETE);
-                                return Mono.just(true);
-                            } else {
-                                step.setStatus(SagaStepStatus.FAILED);
-
-                                return this.revert(orderDTO).then(Mono.just(false));
-                            }
-                        })
-                        .onErrorResume(e -> {
-                            log.info("Error in process: " + e.getMessage() + ", triggering rollback.");
-                            step.setStatus(SagaStepStatus.FAILED);
-
-                            return this.revert(orderDTO).then(Mono.just(false));
-                        }))
-                .takeWhile(success -> success)
-                .then(Mono.just(true))
-                .doFinally(this::resetSteps);
+        try {
+            for (SagaStep step : getSteps()) {
+                boolean success = step.process(orderDTO);
+                if (success) {
+                    completedSteps.add(step);
+                } else {
+                    revert(orderDTO, completedSteps);
+                    return false;
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            log.error("Error in process: {}, triggering rollback.", e.getMessage());
+            revert(orderDTO, completedSteps);
+            return false;
+        }
     }
 
-
-    private void resetSteps(SignalType signalType) {
-        getSteps().forEach(SagaStep::resetStep);
+    private void revert(OrderDTO orderDTO, List<SagaStep> completedSteps) {
+        log.info("Rolling back completed steps: {}", completedSteps.size());
+        List<SagaStep> reverseSteps = new ArrayList<>(completedSteps);
+        Collections.reverse(reverseSteps);
+        reverseSteps.forEach(step -> step.revert(orderDTO));
     }
-
-    private Mono<Void> revert(OrderDTO orderDTO) {
-        return Flux.fromIterable(getSteps())
-                .filter(step -> step.getStatus() == SagaStepStatus.COMPLETE)
-                .concatMap(step -> step.revert(orderDTO))
-                .then();
-    }
-
-
 }

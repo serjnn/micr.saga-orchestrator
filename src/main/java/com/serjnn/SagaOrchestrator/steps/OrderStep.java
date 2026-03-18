@@ -1,73 +1,56 @@
 package com.serjnn.SagaOrchestrator.steps;
 
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
-import com.serjnn.SagaOrchestrator.enums.SagaStepStatus;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestClient;
 
 @Component
-@Slf4j
 public class OrderStep implements SagaStep {
-    private SagaStepStatus status = SagaStepStatus.PENDING;
 
-    public OrderStep(WebClient.Builder webClientBuilder) {
-        this.webClient = webClientBuilder.build();
+    private static final Logger log = LoggerFactory.getLogger(OrderStep.class);
+
+    private final RestClient restClient;
+
+    public OrderStep(RestClient.Builder restClientBuilder) {
+        this.restClient = restClientBuilder.build();
     }
 
-
-    private final WebClient webClient;
-
-
     @Override
-    public Mono<Boolean> process(OrderDTO orderDTO) {
+    public Boolean process(OrderDTO orderDTO) {
         log.info("order process");
-
-        return webClient.post()
-                .uri("lb://order/api/v1/create")
-                .body(BodyInserters.fromValue(orderDTO))
-                .exchangeToMono(response -> {
-                    if (response.statusCode().is2xxSuccessful()) {
-                        setStatus(SagaStepStatus.COMPLETE);
-                        return Mono.just(true);
-                    } else {
-                        setStatus(SagaStepStatus.FAILED);
-                        log.info("order failed with status: " + response.statusCode());
-                        return Mono.just(false);
-                    }
-                })
-                .onErrorResume(e -> {
-                    log.info("order service is unavailable, triggering rollback.");
-                    setStatus(SagaStepStatus.FAILED);
-                    return Mono.error(new RuntimeException("order service is unavailable"));
-                });
-    }
-
-
-
-
-
-    @Override
-    public Mono<Boolean> revert(OrderDTO orderDTO) {
-        log.info("order revert");
-
-        return webClient.post()
-                    .uri("lb://order/api/v1/remove")
-                    .body(BodyInserters.fromValue(orderDTO.getOrderId()))
+        try {
+            var response = restClient.post()
+                    .uri("http://order/api/v1/create")
+                    .body(orderDTO)
                     .retrieve()
-                    .bodyToMono(Boolean.class)
-                    .onErrorReturn(false);
+                    .toBodilessEntity();
 
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return true;
+            } else {
+                log.info("order failed with status: {}", response.getStatusCode());
+                return false;
+            }
+        } catch (Exception e) {
+            log.error("order service is unavailable, triggering rollback: {}", e.getMessage());
+            return false;
+        }
     }
+
     @Override
-    public SagaStepStatus getStatus() {
-        return status;
-    }
-    @Override
-    public void setStatus(SagaStepStatus status) {
-        this.status = status;
+    public Boolean revert(OrderDTO orderDTO) {
+        log.info("order revert");
+        try {
+            return restClient.post()
+                    .uri("http://order/api/v1/remove")
+                    .body(orderDTO.orderId())
+                    .retrieve()
+                    .body(Boolean.class);
+        } catch (Exception e) {
+            log.error("Error during order revert: {}", e.getMessage());
+            return false;
+        }
     }
 }
-
