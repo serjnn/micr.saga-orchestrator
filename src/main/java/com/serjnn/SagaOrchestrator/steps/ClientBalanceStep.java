@@ -3,10 +3,12 @@ package com.serjnn.SagaOrchestrator.steps;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
+@Order(1)
 public class ClientBalanceStep implements SagaStep {
 
     private static final Logger log = LoggerFactory.getLogger(ClientBalanceStep.class);
