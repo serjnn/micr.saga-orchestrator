@@ -3,6 +3,7 @@ package com.serjnn.SagaOrchestrator.steps;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -15,6 +16,12 @@ public class BucketStep implements SagaStep {
 
     private final RestClient restClient;
 
+    @Value("${services.bucket.clear-url}")
+    private String clearUrl;
+
+    @Value("${services.bucket.restore-url}")
+    private String restoreUrl;
+
     public BucketStep(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder.build();
     }
@@ -24,10 +31,11 @@ public class BucketStep implements SagaStep {
         log.info("bucket process");
         try {
             var response = restClient.post()
-                    .uri("http://bucket/api/v1/clear")
+                    .uri(clearUrl)
                     .body(orderDTO.clientID())
                     .retrieve()
                     .toBodilessEntity();
+
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 return true;
@@ -46,7 +54,7 @@ public class BucketStep implements SagaStep {
         log.info("bucket revert");
         try {
             return restClient.post()
-                    .uri("http://bucket/api/v1/restore")
+                    .uri(restoreUrl)
                     .body(orderDTO)
                     .retrieve()
                     .body(Boolean.class);

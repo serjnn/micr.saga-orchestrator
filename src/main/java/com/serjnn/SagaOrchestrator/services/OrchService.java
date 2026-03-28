@@ -6,6 +6,7 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -16,6 +17,8 @@ import java.util.function.Supplier;
 @Service
 public class OrchService {
 
+    @Value("${resilience.retry.suffix}")
+    private String retrySuffix;
     private static final Logger log = LoggerFactory.getLogger(OrchService.class);
 
     private final List<SagaStep> steps;
@@ -54,7 +57,8 @@ public class OrchService {
         Collections.reverse(reverseSteps);
 
         for (SagaStep step : reverseSteps) {
-            String retryName = step.getClass().getSimpleName() + "RevertRetry";
+            String retryName = step.getClass().getSimpleName() + retrySuffix;
+
             Retry retry = retryRegistry.retry(retryName);
 
             Supplier<Boolean> revertSupplier = Retry.decorateSupplier(retry, () -> {

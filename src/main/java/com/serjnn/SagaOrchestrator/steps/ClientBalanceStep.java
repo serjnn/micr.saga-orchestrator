@@ -3,6 +3,7 @@ package com.serjnn.SagaOrchestrator.steps;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -15,6 +16,12 @@ public class ClientBalanceStep implements SagaStep {
 
     private final RestClient restClient;
 
+    @Value("${services.client.deduct-url}")
+    private String deductUrl;
+
+    @Value("${services.client.restore-url}")
+    private String restoreUrl;
+
     public ClientBalanceStep(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder.build();
     }
@@ -24,10 +31,11 @@ public class ClientBalanceStep implements SagaStep {
         log.info("client process");
         try {
             var response = restClient.post()
-                    .uri("http://client/api/v1/deduct")
+                    .uri(deductUrl)
                     .body(orderDTO)
                     .retrieve()
                     .toBodilessEntity();
+
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 return true;
@@ -46,7 +54,7 @@ public class ClientBalanceStep implements SagaStep {
         log.info("client revert");
         try {
             return restClient.post()
-                    .uri("http://client/api/v1/restore")
+                    .uri(restoreUrl)
                     .body(orderDTO)
                     .retrieve()
                     .body(Boolean.class);

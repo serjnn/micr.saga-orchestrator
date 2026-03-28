@@ -1,5 +1,26 @@
 spring:
   application:
-    name: orchestrator
+    name: ${APP_NAME:orchestrator}
+
 server:
-  port: 7018
+  port: ${SERVER_PORT:7018}
+
+api:
+  base-path: ${API_BASE_PATH:/api/v1}
+
+services:
+  bucket:
+    clear-url: ${BUCKET_CLEAR_URL/api/v1/clear}}
+    restore-url: ${BUCKET_RESTORE_URL/api/v1/restore}}
+  client:
+    deduct-url: ${CLIENT_DEDUCT_URL:/api/v1/deduct}}
+    restore-url: ${CLIENT_RESTORE_URL/api/v1/restore}}
+  order:
+    create-url: ${ORDER_CREATE_URL:/api/v1/create}}
+    remove-url: ${ORDER_REMOVE_URL:/api/v1/remove}}
+
+resilience:
+  retry:
+    max-attempts: ${RETRY_MAX_ATTEMPTS:3}
+    wait-duration: ${RETRY_WAIT_DURATION:1s}
+    suffix: ${RETRY_SUFFIX:RevertRetry}

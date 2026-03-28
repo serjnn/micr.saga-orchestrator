@@ -3,6 +3,7 @@ package com.serjnn.SagaOrchestrator.steps;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -15,6 +16,12 @@ public class OrderStep implements SagaStep {
 
     private final RestClient restClient;
 
+    @Value("${services.order.create-url}")
+    private String createUrl;
+
+    @Value("${services.order.remove-url}")
+    private String removeUrl;
+
     public OrderStep(RestClient.Builder restClientBuilder) {
         this.restClient = restClientBuilder.build();
     }
@@ -24,10 +31,11 @@ public class OrderStep implements SagaStep {
         log.info("order process");
         try {
             var response = restClient.post()
-                    .uri("http://order/api/v1/create")
+                    .uri(createUrl)
                     .body(orderDTO)
                     .retrieve()
                     .toBodilessEntity();
+
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 return true;
@@ -46,7 +54,7 @@ public class OrderStep implements SagaStep {
         log.info("order revert");
         try {
             return restClient.post()
-                    .uri("http://order/api/v1/remove")
+                    .uri(removeUrl)
                     .body(orderDTO.orderId())
                     .retrieve()
                     .body(Boolean.class);
