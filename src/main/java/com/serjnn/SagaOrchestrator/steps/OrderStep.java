@@ -44,14 +44,14 @@ public class OrderStep implements SagaStep {
                 return false;
             }
         } catch (Exception e) {
-            log.error("order service is unavailable, triggering rollback: {}", e.getMessage());
+            log.error("Order service is unavailable, triggering rollback: {}", e.getMessage());
             return false;
         }
     }
 
     @Override
     public Boolean revert(OrderDTO orderDTO) {
-        log.info("order revert");
+        log.info("Order revert");
         try {
             return restClient.post()
                     .uri(removeUrl)

@@ -5,19 +5,33 @@ spring:
 server:
   port: ${SERVER_PORT:7018}
 
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
+
 api:
   base-path: ${API_BASE_PATH:/api/v1}
 
 services:
   bucket:
-    clear-url: ${BUCKET_CLEAR_URL/api/v1/clear}}
-    restore-url: ${BUCKET_RESTORE_URL/api/v1/restore}}
+    clear-url: ${BUCKET_CLEAR_URL:/api/v1/clear}
+    restore-url: ${BUCKET_RESTORE_URL:/api/v1/restore}
   client:
-    deduct-url: ${CLIENT_DEDUCT_URL:/api/v1/deduct}}
-    restore-url: ${CLIENT_RESTORE_URL/api/v1/restore}}
+    deduct-url: ${CLIENT_DEDUCT_URL:/api/v1/deduct}
+    restore-url: ${CLIENT_RESTORE_URL:/api/v1/restore}
   order:
-    create-url: ${ORDER_CREATE_URL:/api/v1/create}}
-    remove-url: ${ORDER_REMOVE_URL:/api/v1/remove}}
+    create-url: ${ORDER_CREATE_URL:/api/v1/create}
+    remove-url: ${ORDER_REMOVE_URL:/api/v1/remove}
+
 
 resilience:
   retry:

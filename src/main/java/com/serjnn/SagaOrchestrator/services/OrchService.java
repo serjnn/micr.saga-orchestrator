@@ -30,7 +30,7 @@ public class OrchService {
     }
 
     public boolean start(OrderDTO orderDTO) {
-        log.info("starting transaction");
+        log.info("starting ");
         List<SagaStep> completedSteps = new ArrayList<>();
 
         try {
