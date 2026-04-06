@@ -1,5 +1,6 @@
 package com.serjnn.SagaOrchestrator;
 
+import io.micrometer.observation.ObservationRegistry;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.loadbalancer.LoadBalanced;
@@ -11,8 +12,8 @@ public class SagaOrchestratorApplication {
 
 	@Bean
 	@LoadBalanced
-	public RestClient.Builder restClientBuilder() {
-		return RestClient.builder();
+	public RestClient.Builder restClientBuilder(ObservationRegistry observationRegistry) {
+		return RestClient.builder().observationRegistry(observationRegistry);
 	}
 
 	public static void main(String[] args) {
