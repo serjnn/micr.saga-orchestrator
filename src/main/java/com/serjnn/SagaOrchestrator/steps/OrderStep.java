@@ -53,11 +53,17 @@ public class OrderStep implements SagaStep {
     public Boolean revert(OrderDTO orderDTO) {
         log.info("Order revert");
         try {
-            return restClient.post()
-                    .uri(removeUrl)
-                    .body(orderDTO.orderId())
+            var response = restClient.delete()
+                    .uri(removeUrl, orderDTO.orderId())
                     .retrieve()
-                    .body(Boolean.class);
+                    .toBodilessEntity();
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return true;
+            } else {
+                log.info("Order revert failed with status: {}", response.getStatusCode());
+                return false;
+            }
         } catch (Exception e) {
             log.error("Error during order revert: {}", e.getMessage());
             return false;

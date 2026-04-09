@@ -53,11 +53,18 @@ public class ClientBalanceStep implements SagaStep {
     public Boolean revert(OrderDTO orderDTO) {
         log.info("client revert");
         try {
-            return restClient.post()
+            var response = restClient.post()
                     .uri(restoreUrl)
                     .body(orderDTO)
                     .retrieve()
-                    .body(Boolean.class);
+                    .toBodilessEntity();
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return true;
+            } else {
+                log.info("client revert failed with status: {}", response.getStatusCode());
+                return false;
+            }
         } catch (Exception e) {
             log.error("Client service is unavailable, triggering rollback: {}", e.getMessage());
             return false;

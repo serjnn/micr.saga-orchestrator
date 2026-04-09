@@ -30,9 +30,8 @@ public class BucketStep implements SagaStep {
     public Boolean process(OrderDTO orderDTO) {
         log.info("bucket process");
         try {
-            var response = restClient.post()
-                    .uri(clearUrl)
-                    .body(orderDTO.clientID())
+            var response = restClient.delete()
+                    .uri(clearUrl, orderDTO.clientID())
                     .retrieve()
                     .toBodilessEntity();
 
@@ -53,11 +52,18 @@ public class BucketStep implements SagaStep {
     public Boolean revert(OrderDTO orderDTO) {
         log.info("bucket revert");
         try {
-            return restClient.post()
+            var response = restClient.post()
                     .uri(restoreUrl)
                     .body(orderDTO)
                     .retrieve()
-                    .body(Boolean.class);
+                    .toBodilessEntity();
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return true;
+            } else {
+                log.info("Bucket revert failed with status: {}", response.getStatusCode());
+                return false;
+            }
         } catch (Exception e) {
             log.error("Bucket service is unavailable, triggering rollback: {}", e.getMessage());
             return false;

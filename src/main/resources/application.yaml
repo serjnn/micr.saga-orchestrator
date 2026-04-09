@@ -23,14 +23,14 @@ api:
 
 services:
   bucket:
-    clear-url: ${BUCKET_CLEAR_URL:/api/v1/clear}
-    restore-url: ${BUCKET_RESTORE_URL:/api/v1/restore}
+    clear-url: ${BUCKET_CLEAR_URL:http://bucket/api/v1/buckets/{clientId}}
+    restore-url: ${BUCKET_RESTORE_URL:http://bucket/api/v1/buckets/restore}
   client:
-    deduct-url: ${CLIENT_DEDUCT_URL:/api/v1/deduct}
-    restore-url: ${CLIENT_RESTORE_URL:/api/v1/restore}
+    deduct-url: ${CLIENT_DEDUCT_URL:http://client/api/v1/clients/transactions/deduct}
+    restore-url: ${CLIENT_RESTORE_URL:http://client/api/v1/clients/transactions/restore}
   order:
-    create-url: ${ORDER_CREATE_URL:/api/v1/create}
-    remove-url: ${ORDER_REMOVE_URL:/api/v1/remove}
+    create-url: ${ORDER_CREATE_URL:http://order/api/v1/orders}
+    remove-url: ${ORDER_REMOVE_URL:http://order/api/v1/orders/{orderId}}
 
 
 resilience:

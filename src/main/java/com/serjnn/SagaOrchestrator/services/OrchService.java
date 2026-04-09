@@ -20,9 +20,11 @@ public class OrchService {
     @Value("${resilience.retry.suffix}")
     private String retrySuffix;
     private static final Logger log = LoggerFactory.getLogger(OrchService.class);
-
-    private final List<SagaStep> steps;
     private final RetryRegistry retryRegistry;
+
+    // Client -> Bucket -> Order
+    private final List<SagaStep> steps;
+
 
     public OrchService(List<SagaStep> steps, RetryRegistry retryRegistry) {
         this.steps = steps;
