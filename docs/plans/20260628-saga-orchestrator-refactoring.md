@@ -19,9 +19,9 @@ Refactor the `SagaOrchestrator` microservice to resolve architectural issues, re
 - Complete each task fully before moving to the next.
 
 ## Progress Tracking
-- [ ] Task 1: Fix integration tests (WireMock & HTTP methods mismatch)
-- [ ] Task 2: Centralize configuration properties using type-safe `@ConfigurationProperties`
-- [ ] Task 3: Extract a common parent class for REST steps to eliminate code duplication
+- [x] Task 1: Fix integration tests (WireMock & HTTP methods mismatch)
+- [x] Task 2: Centralize configuration properties using type-safe `@ConfigurationProperties`
+- [x] Task 3: Extract a common parent class for REST steps to eliminate code duplication
 - [ ] Task 4: Introduce custom sealed `SagaStepResult` / `SagaResult` model instead of primitive `Boolean`
 - [ ] Task 5: Implement explicit saga definitions (`SagaDefinition`) instead of Spring `@Order` collection injection
 - [ ] Task 6: Add configurable retry resilience to the process phase
@@ -77,18 +77,18 @@ This avoids blind list injection in `OrchService`.
 **Files:**
 - Modify: `src/test/java/com/serjnn/SagaOrchestrator/SagaOrchestratorIntegrationTest.java`
 
-- [ ] Update wiremock stubs to match exact HTTP methods (e.g. `delete` for bucket clear and order remove).
-- [ ] Update property values in `@TestPropertySource` to include placeholders (e.g. `/api/v1/clear/{clientId}`).
-- [ ] Run `mvn test` to verify integration tests pass successfully.
+- [x] Update wiremock stubs to match exact HTTP methods (e.g. `delete` for bucket clear and order remove).
+- [x] Update property values in `@TestPropertySource` to include placeholders (e.g. `/api/v1/clear/{clientId}`).
+- [x] Run `mvn test` to verify integration tests pass successfully.
 
 ### Task 2: Type-safe Configuration Properties
 **Files:**
 - Create: `src/main/java/com/serjnn/SagaOrchestrator/config/SagaProperties.java`
 - Modify: `src/main/java/com/serjnn/SagaOrchestrator/SagaOrchestratorApplication.java`
 
-- [ ] Create `@ConfigurationProperties` record/class representing URLs and resilience settings.
-- [ ] Enable configuration properties in `SagaOrchestratorApplication`.
-- [ ] Run tests to ensure everything compiles and boots correctly.
+- [x] Create `@ConfigurationProperties` record/class representing URLs and resilience settings.
+- [x] Enable configuration properties in `SagaOrchestratorApplication`.
+- [x] Run tests to ensure everything compiles and boots correctly.
 
 ### Task 3: Base Step Class
 **Files:**
@@ -97,9 +97,9 @@ This avoids blind list injection in `OrchService`.
 - Modify: `src/main/java/com/serjnn/SagaOrchestrator/steps/BucketStep.java`
 - Modify: `src/main/java/com/serjnn/SagaOrchestrator/steps/OrderStep.java`
 
-- [ ] Implement `AbstractSagaStep` wrapping common `RestClient` execute pattern.
-- [ ] Refactor the three steps to extend `AbstractSagaStep` and simplify their methods.
-- [ ] Run tests to verify logic is preserved.
+- [x] Implement `AbstractSagaStep` wrapping common `RestClient` execute pattern.
+- [x] Refactor the three steps to extend `AbstractSagaStep` and simplify their methods.
+- [x] Run tests to verify logic is preserved.
 
 ### Task 4: Sealed Result Types
 **Files:**

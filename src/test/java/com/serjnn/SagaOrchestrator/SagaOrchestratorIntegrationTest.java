@@ -34,10 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
     "services.client.deduct-url=http://localhost:${wiremock.server.port}/api/v1/deduct",
     "services.client.restore-url=http://localhost:${wiremock.server.port}/api/v1/client/restore",
-    "services.bucket.clear-url=http://localhost:${wiremock.server.port}/api/v1/clear",
+    "services.bucket.clear-url=http://localhost:${wiremock.server.port}/api/v1/clear/{clientId}",
     "services.bucket.restore-url=http://localhost:${wiremock.server.port}/api/v1/bucket/restore",
     "services.order.create-url=http://localhost:${wiremock.server.port}/api/v1/create",
-    "services.order.remove-url=http://localhost:${wiremock.server.port}/api/v1/remove",
+    "services.order.remove-url=http://localhost:${wiremock.server.port}/api/v1/remove/{orderId}",
     "eureka.client.enabled=false",
     "spring.cloud.discovery.enabled=false",
     "spring.cloud.loadbalancer.enabled=false",
@@ -80,7 +80,7 @@ public class SagaOrchestratorIntegrationTest {
                 .willReturn(aResponse().withStatus(200)));
 
         // Step 2: BucketStep
-        stubFor(WireMock.post(urlEqualTo("/api/v1/clear"))
+        stubFor(delete(urlEqualTo("/api/v1/clear/123"))
                 .willReturn(aResponse().withStatus(200)));
 
         // Step 3: OrderStep
@@ -94,7 +94,7 @@ public class SagaOrchestratorIntegrationTest {
                 .andExpect(content().string("true"));
 
         verify(postRequestedFor(urlEqualTo("/api/v1/deduct")));
-        verify(postRequestedFor(urlEqualTo("/api/v1/clear")));
+        verify(deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
         verify(postRequestedFor(urlEqualTo("/api/v1/create")));
     }
 
@@ -105,7 +105,7 @@ public class SagaOrchestratorIntegrationTest {
                 .willReturn(aResponse().withStatus(200)));
 
         // Step 2: BucketStep (Failure)
-        stubFor(WireMock.post(urlEqualTo("/api/v1/clear"))
+        stubFor(delete(urlEqualTo("/api/v1/clear/123"))
                 .willReturn(aResponse().withStatus(500)));
 
         // Rollback Step 1: ClientBalanceStep
@@ -122,7 +122,7 @@ public class SagaOrchestratorIntegrationTest {
                 .andExpect(content().string("false"));
 
         verify(postRequestedFor(urlEqualTo("/api/v1/deduct")));
-        verify(postRequestedFor(urlEqualTo("/api/v1/clear")));
+        verify(deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
         verify(postRequestedFor(urlEqualTo("/api/v1/client/restore")));
         verify(0, postRequestedFor(urlEqualTo("/api/v1/create")));
     }
@@ -134,7 +134,7 @@ public class SagaOrchestratorIntegrationTest {
                 .willReturn(aResponse().withStatus(200)));
 
         // Step 2: BucketStep (Success)
-        stubFor(WireMock.post(urlEqualTo("/api/v1/clear"))
+        stubFor(delete(urlEqualTo("/api/v1/clear/123"))
                 .willReturn(aResponse().withStatus(200)));
 
         // Step 3: OrderStep (Failure)
@@ -162,7 +162,7 @@ public class SagaOrchestratorIntegrationTest {
                 .andExpect(content().string("false"));
 
         verify(postRequestedFor(urlEqualTo("/api/v1/deduct")));
-        verify(postRequestedFor(urlEqualTo("/api/v1/clear")));
+        verify(deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
         verify(postRequestedFor(urlEqualTo("/api/v1/create")));
         verify(postRequestedFor(urlEqualTo("/api/v1/bucket/restore")));
         verify(postRequestedFor(urlEqualTo("/api/v1/client/restore")));

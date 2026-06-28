@@ -1,12 +1,12 @@
 package com.serjnn.SagaOrchestrator.services;
 
+import com.serjnn.SagaOrchestrator.config.SagaProperties;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import com.serjnn.SagaOrchestrator.steps.SagaStep;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -17,18 +17,17 @@ import java.util.function.Supplier;
 @Service
 public class OrchService {
 
-    @Value("${resilience.retry.suffix}")
-    private String retrySuffix;
     private static final Logger log = LoggerFactory.getLogger(OrchService.class);
     private final RetryRegistry retryRegistry;
+    private final SagaProperties.RetryProperties retryProperties;
 
     // Client -> Bucket -> Order
     private final List<SagaStep> steps;
 
-
-    public OrchService(List<SagaStep> steps, RetryRegistry retryRegistry) {
+    public OrchService(List<SagaStep> steps, RetryRegistry retryRegistry, SagaProperties.RetryProperties retryProperties) {
         this.steps = steps;
         this.retryRegistry = retryRegistry;
+        this.retryProperties = retryProperties;
     }
 
     public boolean start(OrderDTO orderDTO) {
@@ -59,7 +58,7 @@ public class OrchService {
         Collections.reverse(reverseSteps);
 
         for (SagaStep step : reverseSteps) {
-            String retryName = step.getClass().getSimpleName() + retrySuffix;
+            String retryName = step.getClass().getSimpleName() + retryProperties.suffix();
 
             Retry retry = retryRegistry.retry(retryName);
 

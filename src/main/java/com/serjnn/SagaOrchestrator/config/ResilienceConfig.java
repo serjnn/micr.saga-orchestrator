@@ -11,17 +11,17 @@ import java.time.Duration;
 @Configuration
 public class ResilienceConfig {
 
-    @Value("${resilience.retry.max-attempts}")
-    private int maxAttempts;
+    private final SagaProperties.RetryProperties retryProperties;
 
-    @Value("${resilience.retry.wait-duration}")
-    private Duration waitDuration;
+    public ResilienceConfig(SagaProperties.RetryProperties retryProperties) {
+        this.retryProperties = retryProperties;
+    }
 
     @Bean
     public RetryRegistry retryRegistry() {
         RetryConfig config = RetryConfig.<Boolean>custom()
-                .maxAttempts(maxAttempts)
-                .waitDuration(waitDuration)
+                .maxAttempts(retryProperties.maxAttempts())
+                .waitDuration(retryProperties.waitDuration())
                 .retryOnResult(new RetryResultPredicate())
                 .retryExceptions(Exception.class)
                 .build();

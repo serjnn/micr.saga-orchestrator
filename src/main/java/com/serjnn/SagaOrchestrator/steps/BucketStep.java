@@ -1,72 +1,32 @@
 package com.serjnn.SagaOrchestrator.steps;
 
+import com.serjnn.SagaOrchestrator.config.SagaProperties;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
 @Order(2)
-public class BucketStep implements SagaStep {
+public class BucketStep extends AbstractSagaStep {
 
-    private static final Logger log = LoggerFactory.getLogger(BucketStep.class);
+    private final SagaProperties.ServiceProperties serviceProperties;
 
-    private final RestClient restClient;
-
-    @Value("${services.bucket.clear-url}")
-    private String clearUrl;
-
-    @Value("${services.bucket.restore-url}")
-    private String restoreUrl;
-
-    public BucketStep(RestClient.Builder restClientBuilder) {
-        this.restClient = restClientBuilder.build();
+    public BucketStep(RestClient.Builder restClientBuilder, SagaProperties.ServiceProperties serviceProperties) {
+        super(restClientBuilder.build());
+        this.serviceProperties = serviceProperties;
     }
 
     @Override
     public Boolean process(OrderDTO orderDTO) {
-        log.info("bucket process");
-        try {
-            var response = restClient.delete()
-                    .uri(clearUrl, orderDTO.clientID())
-                    .retrieve()
-                    .toBodilessEntity();
-
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return true;
-            } else {
-                log.info("Bucket failed with status: {}", response.getStatusCode());
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("Bucket service is unavailable, triggering rollback: {}", e.getMessage());
-            return false;
-        }
+        return execute(() -> restClient.delete()
+                .uri(serviceProperties.bucket().clearUrl(), orderDTO.clientID()), "bucket process");
     }
 
     @Override
     public Boolean revert(OrderDTO orderDTO) {
-        log.info("bucket revert");
-        try {
-            var response = restClient.post()
-                    .uri(restoreUrl)
-                    .body(orderDTO)
-                    .retrieve()
-                    .toBodilessEntity();
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return true;
-            } else {
-                log.info("Bucket revert failed with status: {}", response.getStatusCode());
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("Bucket service is unavailable, triggering rollback: {}", e.getMessage());
-            return false;
-        }
+        return execute(() -> restClient.post()
+                .uri(serviceProperties.bucket().restoreUrl())
+                .body(orderDTO), "bucket revert");
     }
 }

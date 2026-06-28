@@ -1,72 +1,32 @@
 package com.serjnn.SagaOrchestrator.steps;
 
+import com.serjnn.SagaOrchestrator.config.SagaProperties;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
 @Order(3)
-public class OrderStep implements SagaStep {
+public class OrderStep extends AbstractSagaStep {
 
-    private static final Logger log = LoggerFactory.getLogger(OrderStep.class);
+    private final SagaProperties.ServiceProperties serviceProperties;
 
-    private final RestClient restClient;
-
-    @Value("${services.order.create-url}")
-    private String createUrl;
-
-    @Value("${services.order.remove-url}")
-    private String removeUrl;
-
-    public OrderStep(RestClient.Builder restClientBuilder) {
-        this.restClient = restClientBuilder.build();
+    public OrderStep(RestClient.Builder restClientBuilder, SagaProperties.ServiceProperties serviceProperties) {
+        super(restClientBuilder.build());
+        this.serviceProperties = serviceProperties;
     }
 
     @Override
     public Boolean process(OrderDTO orderDTO) {
-        log.info("order process");
-        try {
-            var response = restClient.post()
-                    .uri(createUrl)
-                    .body(orderDTO)
-                    .retrieve()
-                    .toBodilessEntity();
-
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return true;
-            } else {
-                log.info("order failed with status: {}", response.getStatusCode());
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("Order service is unavailable, triggering rollback: {}", e.getMessage());
-            return false;
-        }
+        return execute(() -> restClient.post()
+                .uri(serviceProperties.order().createUrl())
+                .body(orderDTO), "order process");
     }
 
     @Override
     public Boolean revert(OrderDTO orderDTO) {
-        log.info("Order revert");
-        try {
-            var response = restClient.delete()
-                    .uri(removeUrl, orderDTO.orderId())
-                    .retrieve()
-                    .toBodilessEntity();
-
-            if (response.getStatusCode().is2xxSuccessful()) {
-                return true;
-            } else {
-                log.info("Order revert failed with status: {}", response.getStatusCode());
-                return false;
-            }
-        } catch (Exception e) {
-            log.error("Error during order revert: {}", e.getMessage());
-            return false;
-        }
+        return execute(() -> restClient.delete()
+                .uri(serviceProperties.order().removeUrl(), orderDTO.orderId()), "Order revert");
     }
 }
