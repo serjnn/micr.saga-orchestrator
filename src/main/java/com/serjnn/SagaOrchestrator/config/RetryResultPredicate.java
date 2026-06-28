@@ -1,10 +1,11 @@
 package com.serjnn.SagaOrchestrator.config;
 
+import com.serjnn.SagaOrchestrator.dto.SagaStepResult;
 import java.util.function.Predicate;
 
-public class RetryResultPredicate implements Predicate<Boolean> {
+public class RetryResultPredicate implements Predicate<SagaStepResult> {
     @Override
-    public boolean test(Boolean result) {
-        return result != null && !result;
+    public boolean test(SagaStepResult result) {
+        return result instanceof SagaStepResult.Failure;
     }
 }

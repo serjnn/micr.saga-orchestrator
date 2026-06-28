@@ -22,7 +22,7 @@ Refactor the `SagaOrchestrator` microservice to resolve architectural issues, re
 - [x] Task 1: Fix integration tests (WireMock & HTTP methods mismatch)
 - [x] Task 2: Centralize configuration properties using type-safe `@ConfigurationProperties`
 - [x] Task 3: Extract a common parent class for REST steps to eliminate code duplication
-- [ ] Task 4: Introduce custom sealed `SagaStepResult` / `SagaResult` model instead of primitive `Boolean`
+- [x] Task 4: Introduce custom sealed `SagaStepResult` / `SagaResult` model instead of primitive `Boolean`
 - [ ] Task 5: Implement explicit saga definitions (`SagaDefinition`) instead of Spring `@Order` collection injection
 - [ ] Task 6: Add configurable retry resilience to the process phase
 
@@ -108,10 +108,10 @@ This avoids blind list injection in `OrchService`.
 - Modify: `src/main/java/com/serjnn/SagaOrchestrator/steps/AbstractSagaStep.java`
 - Modify: `src/main/java/com/serjnn/SagaOrchestrator/services/OrchService.java`
 
-- [ ] Create sealed interface `SagaStepResult`.
-- [ ] Update `SagaStep` interface and implementation to return `SagaStepResult`.
-- [ ] Update `OrchService` process/revert logic to match the new result type.
-- [ ] Run tests to ensure correct integration.
+- [x] Create sealed interface `SagaStepResult`.
+- [x] Update `SagaStep` interface and implementation to return `SagaStepResult`.
+- [x] Update `OrchService` process/revert logic to match the new result type.
+- [x] Run tests to ensure correct integration.
 
 ### Task 5: Explicit Saga Definitions
 **Files:**

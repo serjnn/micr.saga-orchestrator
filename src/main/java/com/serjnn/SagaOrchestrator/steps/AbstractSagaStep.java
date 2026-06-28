@@ -1,6 +1,6 @@
 package com.serjnn.SagaOrchestrator.steps;
 
-import com.serjnn.SagaOrchestrator.dto.OrderDTO;
+import com.serjnn.SagaOrchestrator.dto.SagaStepResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -16,19 +16,21 @@ public abstract class AbstractSagaStep implements SagaStep {
         this.restClient = restClient;
     }
 
-    protected Boolean execute(Supplier<RestClient.RequestHeadersSpec<?>> requestSpecSupplier, String operationName) {
+    protected SagaStepResult execute(Supplier<RestClient.RequestHeadersSpec<?>> requestSpecSupplier, String operationName) {
         log.info("Executing step operation: {}", operationName);
         try {
             ResponseEntity<Void> response = requestSpecSupplier.get().retrieve().toBodilessEntity();
             if (response.getStatusCode().is2xxSuccessful()) {
-                return true;
+                return new SagaStepResult.Success();
             } else {
-                log.info("{} failed with status: {}", operationName, response.getStatusCode());
-                return false;
+                String errorMsg = String.format("%s failed with status: %s", operationName, response.getStatusCode());
+                log.info(errorMsg);
+                return new SagaStepResult.Failure(errorMsg);
             }
         } catch (Exception e) {
-            log.error("{} is unavailable, triggering rollback: {}", operationName, e.getMessage());
-            return false;
+            String errorMsg = String.format("%s is unavailable, triggering rollback: %s", operationName, e.getMessage());
+            log.error(errorMsg);
+            return new SagaStepResult.Failure(errorMsg, e);
         }
     }
 }

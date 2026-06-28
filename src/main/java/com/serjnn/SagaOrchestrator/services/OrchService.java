@@ -2,6 +2,7 @@ package com.serjnn.SagaOrchestrator.services;
 
 import com.serjnn.SagaOrchestrator.config.SagaProperties;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
+import com.serjnn.SagaOrchestrator.dto.SagaStepResult;
 import com.serjnn.SagaOrchestrator.steps.SagaStep;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
@@ -36,10 +37,13 @@ public class OrchService {
 
         try {
             for (SagaStep step : steps) {
-                boolean success = step.process(orderDTO);
-                if (success) {
+                SagaStepResult result = step.process(orderDTO);
+                if (result instanceof SagaStepResult.Success) {
                     completedSteps.add(step);
                 } else {
+                    if (result instanceof SagaStepResult.Failure failure) {
+                        log.error("Step {} failed: {}", step.getClass().getSimpleName(), failure.message());
+                    }
                     revert(orderDTO, completedSteps);
                     return false;
                 }
@@ -62,15 +66,16 @@ public class OrchService {
 
             Retry retry = retryRegistry.retry(retryName);
 
-            Supplier<Boolean> revertSupplier = Retry.decorateSupplier(retry, () -> {
+            Supplier<SagaStepResult> revertSupplier = Retry.decorateSupplier(retry, () -> {
                 log.info("Attempting revert for step: {}", step.getClass().getSimpleName());
                 return step.revert(orderDTO);
             });
 
             try {
-                Boolean result = revertSupplier.get();
-                if (Boolean.FALSE.equals(result)) {
-                    log.error("Critical: Failed to revert step: {} after retries.", step.getClass().getSimpleName());
+                SagaStepResult result = revertSupplier.get();
+                if (result instanceof SagaStepResult.Failure failure) {
+                    log.error("Critical: Failed to revert step: {} after retries. Error: {}", 
+                            step.getClass().getSimpleName(), failure.message());
                 }
             } catch (Exception e) {
                 log.error("Critical: Exception during revert for step: {} after retries. Error: {}", 
