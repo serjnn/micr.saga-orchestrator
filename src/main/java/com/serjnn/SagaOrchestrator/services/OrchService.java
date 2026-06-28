@@ -1,5 +1,6 @@
 package com.serjnn.SagaOrchestrator.services;
 
+import com.serjnn.SagaOrchestrator.config.SagaDefinition;
 import com.serjnn.SagaOrchestrator.config.SagaProperties;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import com.serjnn.SagaOrchestrator.dto.SagaStepResult;
@@ -21,22 +22,20 @@ public class OrchService {
     private static final Logger log = LoggerFactory.getLogger(OrchService.class);
     private final RetryRegistry retryRegistry;
     private final SagaProperties.RetryProperties retryProperties;
+    private final SagaDefinition orderCreationSaga;
 
-    // Client -> Bucket -> Order
-    private final List<SagaStep> steps;
-
-    public OrchService(List<SagaStep> steps, RetryRegistry retryRegistry, SagaProperties.RetryProperties retryProperties) {
-        this.steps = steps;
+    public OrchService(SagaDefinition orderCreationSaga, RetryRegistry retryRegistry, SagaProperties.RetryProperties retryProperties) {
+        this.orderCreationSaga = orderCreationSaga;
         this.retryRegistry = retryRegistry;
         this.retryProperties = retryProperties;
     }
 
     public boolean start(OrderDTO orderDTO) {
-        log.info("starting ");
+        log.info("starting saga: {}", orderCreationSaga.name());
         List<SagaStep> completedSteps = new ArrayList<>();
 
         try {
-            for (SagaStep step : steps) {
+            for (SagaStep step : orderCreationSaga.steps()) {
                 SagaStepResult result = step.process(orderDTO);
                 if (result instanceof SagaStepResult.Success) {
                     completedSteps.add(step);

@@ -23,7 +23,7 @@ Refactor the `SagaOrchestrator` microservice to resolve architectural issues, re
 - [x] Task 2: Centralize configuration properties using type-safe `@ConfigurationProperties`
 - [x] Task 3: Extract a common parent class for REST steps to eliminate code duplication
 - [x] Task 4: Introduce custom sealed `SagaStepResult` / `SagaResult` model instead of primitive `Boolean`
-- [ ] Task 5: Implement explicit saga definitions (`SagaDefinition`) instead of Spring `@Order` collection injection
+- [x] Task 5: Implement explicit saga definitions (`SagaDefinition`) instead of Spring `@Order` collection injection
 - [ ] Task 6: Add configurable retry resilience to the process phase
 
 ---
@@ -119,10 +119,10 @@ This avoids blind list injection in `OrchService`.
 - Create: `src/main/java/com/serjnn/SagaOrchestrator/config/SagaConfig.java`
 - Modify: `src/main/java/com/serjnn/SagaOrchestrator/services/OrchService.java`
 
-- [ ] Create `SagaDefinition` bean class.
-- [ ] Create `SagaConfig` declaring the bean with specific step instances in order.
-- [ ] Modify `OrchService` to run a given `SagaDefinition` instead of auto-wired `@Order` list.
-- [ ] Run tests to verify the orchestrator executes the saga in the correct order.
+- [x] Create `SagaDefinition` bean class.
+- [x] Create `SagaConfig` declaring the bean with specific step instances in order.
+- [x] Modify `OrchService` to run a given `SagaDefinition` instead of auto-wired `@Order` list.
+- [x] Run tests to verify the orchestrator executes the saga in the correct order.
 
 ### Task 6: Configurable Process Phase Retries
 **Files:**
