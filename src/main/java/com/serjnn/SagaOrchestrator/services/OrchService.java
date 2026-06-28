@@ -36,7 +36,19 @@ public class OrchService {
 
         try {
             for (SagaStep step : orderCreationSaga.steps()) {
-                SagaStepResult result = step.process(orderDTO);
+                SagaStepResult result;
+                if (retryProperties.processEnabled()) {
+                    String retryName = step.getClass().getSimpleName() + "Process" + retryProperties.suffix();
+                    Retry retry = retryRegistry.retry(retryName);
+                    Supplier<SagaStepResult> processSupplier = Retry.decorateSupplier(retry, () -> {
+                        log.info("Attempting process for step: {}", step.getClass().getSimpleName());
+                        return step.process(orderDTO);
+                    });
+                    result = processSupplier.get();
+                } else {
+                    result = step.process(orderDTO);
+                }
+
                 if (result instanceof SagaStepResult.Success) {
                     completedSteps.add(step);
                 } else {
@@ -61,24 +73,30 @@ public class OrchService {
         Collections.reverse(reverseSteps);
 
         for (SagaStep step : reverseSteps) {
-            String retryName = step.getClass().getSimpleName() + retryProperties.suffix();
-
-            Retry retry = retryRegistry.retry(retryName);
-
-            Supplier<SagaStepResult> revertSupplier = Retry.decorateSupplier(retry, () -> {
-                log.info("Attempting revert for step: {}", step.getClass().getSimpleName());
-                return step.revert(orderDTO);
-            });
-
-            try {
-                SagaStepResult result = revertSupplier.get();
-                if (result instanceof SagaStepResult.Failure failure) {
-                    log.error("Critical: Failed to revert step: {} after retries. Error: {}", 
-                            step.getClass().getSimpleName(), failure.message());
+            SagaStepResult result;
+            if (retryProperties.revertEnabled()) {
+                String retryName = step.getClass().getSimpleName() + retryProperties.suffix();
+                Retry retry = retryRegistry.retry(retryName);
+                Supplier<SagaStepResult> revertSupplier = Retry.decorateSupplier(retry, () -> {
+                    log.info("Attempting revert for step: {}", step.getClass().getSimpleName());
+                    return step.revert(orderDTO);
+                });
+                try {
+                    result = revertSupplier.get();
+                } catch (Exception e) {
+                    result = new SagaStepResult.Failure(e.getMessage(), e);
                 }
-            } catch (Exception e) {
-                log.error("Critical: Exception during revert for step: {} after retries. Error: {}", 
-                        step.getClass().getSimpleName(), e.getMessage());
+            } else {
+                try {
+                    result = step.revert(orderDTO);
+                } catch (Exception e) {
+                    result = new SagaStepResult.Failure(e.getMessage(), e);
+                }
+            }
+
+            if (result instanceof SagaStepResult.Failure failure) {
+                log.error("Critical: Failed to revert step: {} after retries/attempts. Error: {}", 
+                        step.getClass().getSimpleName(), failure.message());
             }
         }
     }

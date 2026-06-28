@@ -38,6 +38,8 @@ resilience:
     max-attempts: ${RETRY_MAX_ATTEMPTS:3}
     wait-duration: ${RETRY_WAIT_DURATION:1s}
     suffix: ${RETRY_SUFFIX:RevertRetry}
+    process-enabled: ${RETRY_PROCESS_ENABLED:false}
+    revert-enabled: ${RETRY_REVERT_ENABLED:true}
 
 logging:
   pattern:

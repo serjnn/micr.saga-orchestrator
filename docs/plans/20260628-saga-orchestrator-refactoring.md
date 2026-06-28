@@ -24,7 +24,7 @@ Refactor the `SagaOrchestrator` microservice to resolve architectural issues, re
 - [x] Task 3: Extract a common parent class for REST steps to eliminate code duplication
 - [x] Task 4: Introduce custom sealed `SagaStepResult` / `SagaResult` model instead of primitive `Boolean`
 - [x] Task 5: Implement explicit saga definitions (`SagaDefinition`) instead of Spring `@Order` collection injection
-- [ ] Task 6: Add configurable retry resilience to the process phase
+- [x] Task 6: Add configurable retry resilience to the process phase
 
 ---
 
@@ -128,6 +128,6 @@ This avoids blind list injection in `OrchService`.
 **Files:**
 - Modify: `src/main/java/com/serjnn/SagaOrchestrator/services/OrchService.java`
 
-- [ ] Decorate the step `process` call with Retry from `RetryRegistry` if process retry is enabled.
-- [ ] Add config properties to enable/disable process/revert retries.
-- [ ] Run tests to verify all steps function as expected.
+- [x] Decorate the step `process` call with Retry from `RetryRegistry` if process retry is enabled.
+- [x] Add config properties to enable/disable process/revert retries.
+- [x] Run tests to verify all steps function as expected.

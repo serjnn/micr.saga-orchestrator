@@ -20,6 +20,8 @@ public class SagaProperties {
     public record RetryProperties(
             int maxAttempts,
             Duration waitDuration,
-            String suffix
+            String suffix,
+            boolean processEnabled,
+            boolean revertEnabled
     ) {}
 }
