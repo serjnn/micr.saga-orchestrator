@@ -25,7 +25,7 @@ import java.util.UUID;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -91,7 +91,9 @@ public class SagaOrchestratorIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderDTO)))
                 .andExpect(status().isOk())
-                .andExpect(content().string("true"));
+                .andExpect(jsonPath("$.orderId").value(orderDTO.orderId().toString()))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Order saga completed successfully"));
 
         verify(postRequestedFor(urlEqualTo("/api/v1/deduct")));
         verify(deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
@@ -118,8 +120,10 @@ public class SagaOrchestratorIntegrationTest {
         mockMvc.perform(post("/api/v1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderDTO)))
-                .andExpect(status().isOk())
-                .andExpect(content().string("false"));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.orderId").value(orderDTO.orderId().toString()))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Order saga failed and compensations were executed"));
 
         verify(postRequestedFor(urlEqualTo("/api/v1/deduct")));
         verify(deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
@@ -158,13 +162,30 @@ public class SagaOrchestratorIntegrationTest {
         mockMvc.perform(post("/api/v1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(orderDTO)))
-                .andExpect(status().isOk())
-                .andExpect(content().string("false"));
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.orderId").value(orderDTO.orderId().toString()))
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value("Order saga failed and compensations were executed"));
 
         verify(postRequestedFor(urlEqualTo("/api/v1/deduct")));
         verify(deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
         verify(postRequestedFor(urlEqualTo("/api/v1/create")));
         verify(postRequestedFor(urlEqualTo("/api/v1/bucket/restore")));
         verify(postRequestedFor(urlEqualTo("/api/v1/client/restore")));
+    }
+
+    @Test
+    void testValidationFailureOnInvalidPayload() throws Exception {
+        OrderDTO invalidOrder = new OrderDTO(
+                null,
+                null,
+                List.of(),
+                new BigDecimal("-10.00")
+        );
+
+        mockMvc.perform(post("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidOrder)))
+                .andExpect(status().isBadRequest());
     }
 }
