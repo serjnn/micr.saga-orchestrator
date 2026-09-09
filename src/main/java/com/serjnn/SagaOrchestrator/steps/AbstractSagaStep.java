@@ -4,6 +4,7 @@ import com.serjnn.SagaOrchestrator.dto.SagaStepResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import java.util.function.Supplier;
 
@@ -25,12 +26,17 @@ public abstract class AbstractSagaStep implements SagaStep {
             } else {
                 String errorMsg = String.format("%s failed with status: %s", operationName, response.getStatusCode());
                 log.warn(errorMsg);
-                return new SagaStepResult.Failure(errorMsg);
+                boolean retryable = !response.getStatusCode().is4xxClientError();
+                return new SagaStepResult.Failure(errorMsg, null, retryable);
             }
+        } catch (HttpClientErrorException e) {
+            String errorMsg = String.format("%s failed with client error %s: %s", operationName, e.getStatusCode(), e.getMessage());
+            log.warn(errorMsg);
+            return new SagaStepResult.Failure(errorMsg, e, false);
         } catch (Exception e) {
             String errorMsg = String.format("%s is unavailable, triggering rollback: %s", operationName, e.getMessage());
             log.error(errorMsg);
-            return new SagaStepResult.Failure(errorMsg, e);
+            return new SagaStepResult.Failure(errorMsg, e, true);
         }
     }
 }

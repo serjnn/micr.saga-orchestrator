@@ -6,6 +6,6 @@ import java.util.function.Predicate;
 public class RetryResultPredicate implements Predicate<SagaStepResult> {
     @Override
     public boolean test(SagaStepResult result) {
-        return result instanceof SagaStepResult.Failure;
+        return result instanceof SagaStepResult.Failure failure && failure.retryable();
     }
 }

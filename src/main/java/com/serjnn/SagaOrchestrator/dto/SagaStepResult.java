@@ -4,9 +4,17 @@ public sealed interface SagaStepResult permits SagaStepResult.Success, SagaStepR
 
     record Success() implements SagaStepResult {}
 
-    record Failure(String message, Throwable cause) implements SagaStepResult {
+    record Failure(String message, Throwable cause, boolean retryable) implements SagaStepResult {
         public Failure(String message) {
-            this(message, null);
+            this(message, null, true);
+        }
+
+        public Failure(String message, Throwable cause) {
+            this(message, cause, true);
+        }
+
+        public Failure(String message, boolean retryable) {
+            this(message, null, retryable);
         }
     }
 }

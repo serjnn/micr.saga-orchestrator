@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Service
@@ -31,29 +32,18 @@ public class OrchService {
     }
 
     public boolean start(OrderDTO orderDTO) {
-        log.info("starting saga: {}", orderCreationSaga.name());
+        log.info("Starting saga: {}", orderCreationSaga.name());
         List<SagaStep> completedSteps = new ArrayList<>();
 
         try {
             for (SagaStep step : orderCreationSaga.steps()) {
-                SagaStepResult result;
-                if (retryProperties.processEnabled()) {
-                    String retryName = step.getClass().getSimpleName() + "Process" + retryProperties.suffix();
-                    Retry retry = retryRegistry.retry(retryName);
-                    Supplier<SagaStepResult> processSupplier = Retry.decorateSupplier(retry, () -> {
-                        log.info("Attempting process for step: {}", step.getClass().getSimpleName());
-                        return step.process(orderDTO);
-                    });
-                    result = processSupplier.get();
-                } else {
-                    result = step.process(orderDTO);
-                }
+                SagaStepResult result = executeStep(step, "Process", step::process, orderDTO, retryProperties.processEnabled());
 
                 if (result instanceof SagaStepResult.Success) {
                     completedSteps.add(step);
                 } else {
                     if (result instanceof SagaStepResult.Failure failure) {
-                        log.error("Step {} failed: {}", step.getClass().getSimpleName(), failure.message());
+                        log.error("Step {} failed: {}", step.getName(), failure.message());
                     }
                     revert(orderDTO, completedSteps);
                     return false;
@@ -73,30 +63,40 @@ public class OrchService {
         Collections.reverse(reverseSteps);
 
         for (SagaStep step : reverseSteps) {
-            SagaStepResult result;
-            if (retryProperties.revertEnabled()) {
-                String retryName = step.getClass().getSimpleName() + retryProperties.suffix();
-                Retry retry = retryRegistry.retry(retryName);
-                Supplier<SagaStepResult> revertSupplier = Retry.decorateSupplier(retry, () -> {
-                    log.info("Attempting revert for step: {}", step.getClass().getSimpleName());
-                    return step.revert(orderDTO);
-                });
-                try {
-                    result = revertSupplier.get();
-                } catch (Exception e) {
-                    result = new SagaStepResult.Failure(e.getMessage(), e);
-                }
-            } else {
-                try {
-                    result = step.revert(orderDTO);
-                } catch (Exception e) {
-                    result = new SagaStepResult.Failure(e.getMessage(), e);
-                }
-            }
+            SagaStepResult result = executeStep(step, "Revert", step::revert, orderDTO, retryProperties.revertEnabled());
 
             if (result instanceof SagaStepResult.Failure failure) {
                 log.error("Critical: Failed to revert step: {} after retries/attempts. Error: {}", 
-                        step.getClass().getSimpleName(), failure.message());
+                        step.getName(), failure.message());
+            }
+        }
+    }
+
+    private SagaStepResult executeStep(
+            SagaStep step,
+            String phase,
+            Function<OrderDTO, SagaStepResult> action,
+            OrderDTO orderDTO,
+            boolean retryEnabled
+    ) {
+        String stepName = step.getName();
+        if (retryEnabled) {
+            String retryName = stepName + ("Process".equalsIgnoreCase(phase) ? "Process" : "") + retryProperties.suffix();
+            Retry retry = retryRegistry.retry(retryName);
+            Supplier<SagaStepResult> supplier = Retry.decorateSupplier(retry, () -> {
+                log.info("Attempting {} for step: {}", phase.toLowerCase(), stepName);
+                return action.apply(orderDTO);
+            });
+            try {
+                return supplier.get();
+            } catch (Exception e) {
+                return new SagaStepResult.Failure(e.getMessage(), e, false);
+            }
+        } else {
+            try {
+                return action.apply(orderDTO);
+            } catch (Exception e) {
+                return new SagaStepResult.Failure(e.getMessage(), e, false);
             }
         }
     }
