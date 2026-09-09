@@ -24,7 +24,7 @@ public abstract class AbstractSagaStep implements SagaStep {
                 return new SagaStepResult.Success();
             } else {
                 String errorMsg = String.format("%s failed with status: %s", operationName, response.getStatusCode());
-                log.info(errorMsg);
+                log.warn(errorMsg);
                 return new SagaStepResult.Failure(errorMsg);
             }
         } catch (Exception e) {

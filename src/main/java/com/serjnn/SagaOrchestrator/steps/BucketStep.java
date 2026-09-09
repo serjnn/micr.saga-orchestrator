@@ -3,12 +3,10 @@ package com.serjnn.SagaOrchestrator.steps;
 import com.serjnn.SagaOrchestrator.config.SagaProperties;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import com.serjnn.SagaOrchestrator.dto.SagaStepResult;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
-@Order(2)
 public class BucketStep extends AbstractSagaStep {
 
     private final SagaProperties.ServiceProperties serviceProperties;
@@ -21,7 +19,7 @@ public class BucketStep extends AbstractSagaStep {
     @Override
     public SagaStepResult process(OrderDTO orderDTO) {
         return execute(() -> restClient.delete()
-                .uri(serviceProperties.bucket().clearUrl(), orderDTO.clientID()), "bucket process");
+                .uri(serviceProperties.bucket().clearUrl(), orderDTO.clientId()), "bucket process");
     }
 
     @Override

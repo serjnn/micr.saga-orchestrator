@@ -3,12 +3,10 @@ package com.serjnn.SagaOrchestrator.steps;
 import com.serjnn.SagaOrchestrator.config.SagaProperties;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import com.serjnn.SagaOrchestrator.dto.SagaStepResult;
-import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
-@Order(1)
 public class ClientBalanceStep extends AbstractSagaStep {
 
     private final SagaProperties.ServiceProperties serviceProperties;
