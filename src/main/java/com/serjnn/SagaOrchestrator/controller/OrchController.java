@@ -4,6 +4,7 @@ import com.serjnn.SagaOrchestrator.dto.OrderDTO;
 import com.serjnn.SagaOrchestrator.dto.SagaResponseDTO;
 import com.serjnn.SagaOrchestrator.services.OrchService;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,13 +23,14 @@ public class OrchController {
 
     @PostMapping
     public ResponseEntity<SagaResponseDTO> start(@Valid @RequestBody OrderDTO orderDTO) {
-        boolean success = orchService.start(orderDTO);
-        if (success) {
-            return ResponseEntity.ok(new SagaResponseDTO(orderDTO.orderId(), true, "Order saga completed successfully"));
+        SagaResponseDTO response = orchService.processSaga(orderDTO);
+        if (response.success()) {
+            return ResponseEntity.ok(response);
+        } else if ("IN_PROGRESS".equals(response.message())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(new SagaResponseDTO(orderDTO.orderId(), false, "Saga is already in progress for this order"));
         } else {
-            return ResponseEntity.unprocessableEntity().body(
-                    new SagaResponseDTO(orderDTO.orderId(), false, "Order saga failed and compensations were executed")
-            );
+            return ResponseEntity.unprocessableEntity().body(response);
         }
     }
 }

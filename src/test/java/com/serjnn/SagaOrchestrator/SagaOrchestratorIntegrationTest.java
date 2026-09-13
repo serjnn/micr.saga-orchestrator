@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.serjnn.SagaOrchestrator.dto.BucketItemDTO;
 import com.serjnn.SagaOrchestrator.dto.OrderDTO;
+import com.serjnn.SagaOrchestrator.services.SagaIdempotencyService;
 import io.micrometer.observation.ObservationRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,17 +12,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cloud.contract.wiremock.AutoConfigureWireMock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -45,6 +52,34 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 })
 public class SagaOrchestratorIntegrationTest {
 
+    static class InMemorySagaIdempotencyService implements SagaIdempotencyService {
+        private final Map<UUID, String> store = new ConcurrentHashMap<>();
+
+        @Override
+        public boolean tryStartSaga(UUID orderId, Duration lockTtl) {
+            return store.putIfAbsent(orderId, "IN_PROGRESS") == null;
+        }
+
+        @Override
+        public Optional<String> getSagaState(UUID orderId) {
+            return Optional.ofNullable(store.get(orderId));
+        }
+
+        @Override
+        public void markCompleted(UUID orderId, Duration ttl) {
+            store.put(orderId, "COMPLETED");
+        }
+
+        @Override
+        public void markRolledBack(UUID orderId, Duration ttl) {
+            store.put(orderId, "ROLLED_BACK");
+        }
+
+        public void clear() {
+            store.clear();
+        }
+    }
+
     @TestConfiguration
     static class TestConfig {
         @Bean
@@ -52,7 +87,16 @@ public class SagaOrchestratorIntegrationTest {
         public RestClient.Builder restClientBuilder(ObservationRegistry observationRegistry) {
             return RestClient.builder().observationRegistry(observationRegistry);
         }
+
+        @Bean
+        @Primary
+        public SagaIdempotencyService sagaIdempotencyService() {
+            return new InMemorySagaIdempotencyService();
+        }
     }
+
+    @MockBean
+    private StringRedisTemplate redisTemplate;
 
     @Autowired
     private MockMvc mockMvc;
@@ -187,5 +231,47 @@ public class SagaOrchestratorIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidOrder)))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void testIdempotencyDuplicateRequestReturnsCachedResponse() throws Exception {
+        // Step 1: ClientBalanceStep
+        stubFor(WireMock.post(urlEqualTo("/api/v1/deduct"))
+                .willReturn(aResponse().withStatus(200)));
+
+        // Step 2: BucketStep
+        stubFor(delete(urlEqualTo("/api/v1/clear/123"))
+                .willReturn(aResponse().withStatus(200)));
+
+        // Step 3: OrderStep
+        stubFor(WireMock.post(urlEqualTo("/api/v1/create"))
+                .willReturn(aResponse().withStatus(200)));
+
+        // First request - executes the whole saga
+        mockMvc.perform(post("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(orderDTO.orderId().toString()))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Order saga completed successfully"));
+
+        verify(1, postRequestedFor(urlEqualTo("/api/v1/deduct")));
+        verify(1, deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
+        verify(1, postRequestedFor(urlEqualTo("/api/v1/create")));
+
+        // Second request with the same orderId - should return cached completed response WITHOUT calling downstream services again
+        mockMvc.perform(post("/api/v1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(orderDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.orderId").value(orderDTO.orderId().toString()))
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Order saga completed successfully (idempotent replay)"));
+
+        // Verify downstream services were NOT called again (still exactly 1 invocation)
+        verify(1, postRequestedFor(urlEqualTo("/api/v1/deduct")));
+        verify(1, deleteRequestedFor(urlEqualTo("/api/v1/clear/123")));
+        verify(1, postRequestedFor(urlEqualTo("/api/v1/create")));
     }
 }
