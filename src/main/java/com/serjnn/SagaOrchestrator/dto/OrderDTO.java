@@ -10,7 +10,7 @@ import java.util.UUID;
 
 public record OrderDTO(
         @NotNull UUID orderId,
-        @NotNull Long clientId,
+        @NotNull @Positive Long clientId,
         @NotEmpty List<@Valid BucketItemDTO> items,
         @NotNull @Positive BigDecimal totalSum
 ) {}
